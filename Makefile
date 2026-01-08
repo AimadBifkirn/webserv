@@ -1,45 +1,23 @@
-# Compiler and flags
+NAME = ex00
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 
-# Executable name
-NAME = webserv
+SRC = main.cpp config/config.cpp
 
-# Source files
-SRCS = main.cpp \
-       config/config.cpp
+OBJ = ${SRC:.cpp=.o}
 
-# Object files
-OBJS = $(SRCS:.cpp=.o)
+all: ${NAME}
 
-# Default target
-all: $(NAME)
+%.o:%.cpp
+	${CXX} ${CXXFLAGS} -c $< -o $@
 
-# Link object files to create executable
-$(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
+${NAME}: ${OBJ}
+	${CXX} ${CXXFLAGS} ${OBJ} -o ${NAME}
 
-# Compile source files to object files
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+clean: 
+	rm -f ${OBJ}
 
-# Clean object files
-clean:
-	rm -f $(OBJS)
-
-# Clean everything
 fclean: clean
-	rm -f $(NAME)
+	rm -f ${NAME}
 
-# Rebuild
 re: fclean all
-
-# Run the program with default config
-run: $(NAME)
-	./$(NAME)
-
-# Run with custom config
-test: $(NAME)
-	./$(NAME) config/default.conf
-
-.PHONY: all clean fclean re run test

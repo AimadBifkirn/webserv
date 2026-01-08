@@ -11,16 +11,16 @@
 
 class LocationConfig {
 	private:
-		std::string					path;
-		std::vector<std::string>	allowed_methods;
-		std::string					root;
-		std::string					index;
-		bool						autoindex;
-		std::string					cgi_path;
-		std::string					redirect;
+		std::string					path; // URL path for this location, example: "/images"
+		std::vector<std::string>	allowed_methods; // (allowed methods) list of allowed HTTP methods for this location
+		std::string					root; // overrides server root for this location, if path == "/images", and root == "/var/www/images", and the request is for "/images/pic.jpg", the server will look for the file at "/var/www/images/pic.jpg"
+		std::string					index; // (default index file) meaning file to serve when a directory is requested, default is "index.html"
+		bool						autoindex; // (autoindex) whether to enable directory listing, default is false
+		std::string					cgi_path; // (cgi path) path to the CGI script
+		std::string					redirect; // (redirect) URL to redirect to
 	public:
 
-		LocationConfig();
+		LocationConfig() : root(""), index(""), autoindex(false), cgi_path(""), redirect("") {};
 
 		// setters
 		void	setPath (const std::string& path) { this->path = path; };
@@ -44,17 +44,17 @@ class LocationConfig {
 
 class ServerConfig {
 	private:
-		int							port;
-		std::string					host;
-		std::string					server_name;
-		std::string					root;
-		std::string					index;
-		size_t						client_max_body_size;
-		std::map<int, std::string>	error_pages;
-		std::vector<LocationConfig>	locations;
+		int							port; // default port is 80 in http
+		std::string					host; // default host is 0.0.0.0
+		std::string					server_name; // (domain name) if not set in config, default is "", meaning catch all
+		std::string					root; // (default root) where the server will look for files, default is "../app"
+		std::string					index; // (default index file) meaning file to serve when a directory is requested, default is "../app/index.html"
+		size_t						client_max_body_size; // (default max body size) meaning maximum allowed size for client request body, default is 1MB
+		std::map<int, std::string>	error_pages; // (custom error pages)
+		std::vector<LocationConfig>	locations; // (location blocks) A location overrides server behavior for a specific URL path.
 	public:
 
-		ServerConfig();
+		ServerConfig() : port(80), host("0.0.0.0"), root("../app"), index("index.html"), client_max_body_size(1 * 1024 * 1024) {};
 
 		// setters
 		void	setPort (int port) { this->port = port; };
