@@ -38,19 +38,47 @@ size_t getClientMaxBodySize(const std::string &token)
     return size;
 }
 
-std::string getIPorPort(const std::string &token)
+std::string getIP(const std::string &token)
 {
+    std::string ip = "";
     for (size_t i = 0; i < token.size(); ++i)
     {
         if (token.find(':') != std::string::npos) // ila 3tani ip + port
         {
             std::stringstream ss;
-            for (; token [i] && token[i] !=  '.'; ++i)
+            while (i < token.size() && token[i] != ':')
             {
-                if (std::isdigit(token[i]))
+                int count = 0;
+                int dot_count = 0;
+                if (i > 0 && token[i] == '.') // mazal mahandlitch ila t3taw n9ati mzdiyin "127..0.0.1"
+                {
+                    count = 0;
+                    dot_count++;
+                    if (dot_count > 3)
+                        throw std::runtime_error("Error: invalid IP address format");
+                }
+                else if (std::isdigit(token[i]))
+                {
                     ss << token[i];
+                    count++;
+                    if (count > 3)
+                        throw std::runtime_error("Error: invalid IP address format");
+                    else if (count == 3)
+                    {
+                        int octet;
+                        ss >> octet;
+                        if (octet < 0 || octet > 255)
+                            throw std::runtime_error("Error: invalid IP address octet");
+                        ss >> ip;
+                        ip += '.';
+                        ss.str(""); // clear the stringstream
+                        ss.clear(); // clear any error flags
+                        count = 0;
+                    }
+                }
                 else
                     throw std::runtime_error("Error: invalid character in port number");
+                ++i;
             }
             // if (token[i] == '.')
         }
