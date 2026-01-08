@@ -63,7 +63,7 @@ static std::string getIP(const std::string &token)
                         ss >> octet;
                         if (octet < 0 || octet > 255)
                             throw std::runtime_error("Error: invalid IP address octet");
-                        ss >> ip;
+                        ip += ss.str();
                         ip += '.';
                         ss.str(""); // .str("") katbdel contenu dyal ss b string khawi
                         ss.clear(); // katheyd error flags bhal eof ola fail, bach imkenlik tsta3mlha mra khra
@@ -122,14 +122,23 @@ static void parseLocationBlock(const std::vector<std::string>& tokens, size_t& i
                 throw std::runtime_error("Error: expected allowed_methods values");
             std::vector<std::string> methods;
             size_t j = i + 1;
-            while (j < tokens.size() && tokens[j] != "}" && tokens[j] != "location")
+            int breaker = 0;
+            while (j < tokens.size() && !breaker)
             {
-                if (tokens[j] == "GET" || tokens[j] == "POST" || tokens[j] == "DELETE")
-                    methods.push_back(tokens[j]);
+                std::string method = tokens[j];
+                if (tokens[j][tokens[j].size() - 1] == ';')
+                {
+                    method = method.substr(0, tokens[j].size() - 1);
+                    breaker = 1;
+                }
+                if (method == "GET" || method == "POST" || method == "DELETE")
+                    methods.push_back(method);
                 else
                     throw std::runtime_error("Error: invalid HTTP method in allowed_methods");
                 ++j;
             }
+            if (!breaker)
+                throw std::runtime_error("Error: expected ';' at the end of allowed_methods directive");
             location.setAllowedMethods(methods);
             i = j;
         }
