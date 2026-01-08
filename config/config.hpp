@@ -85,7 +85,7 @@ class Config
     public:
         void addServer(const ServerConfig& server) { servers.push_back(server); };
         const std::vector<ServerConfig>& getServers() const { return this->servers; };
-        bool parse(const std::string& filepath);
+        void parse(const std::string& filepath);
         void printConfig() const; // For debugging
 };
 
