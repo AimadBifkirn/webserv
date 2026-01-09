@@ -54,7 +54,7 @@ class ServerConfig {
 		std::vector<LocationConfig>	locations; // (location blocks) A location overrides server behavior for a specific URL path.
 	public:
 
-		ServerConfig() : port(80), host("0.0.0.0"), root("../app"), index("index.html"), client_max_body_size(1 * 1024 * 1024) {};
+		ServerConfig() : port (-1) , index("index.html"), client_max_body_size(1 * 1024 * 1024) {};
 
 		// setters
 		void	setPort (int port) { this->port = port; };
@@ -75,6 +75,9 @@ class ServerConfig {
 		size_t				getClientMaxBodySize () const { return this->client_max_body_size; };
 		const std::map<int, std::string>&	getErrorPages () const { return this->error_pages; };
 		const std::vector<LocationConfig>&	getLocations () const { return this->locations; };
+
+		// set root and index for all locations that don't have it set
+		void	setDefaultRootAndIndexForLocations();
 };
 
 

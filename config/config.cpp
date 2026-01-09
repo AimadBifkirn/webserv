@@ -42,55 +42,53 @@ static size_t getClientMaxBodySize(const std::string &token)
 static std::string getIP(const std::string &token)
 {
     std::string ip = "";
-    for (size_t i = 0; i < token.size(); ++i)
+    size_t i = 0;
+
+    if (token.find(':') != std::string::npos) // ila 3tani ip + port
     {
-        if (token.find(':') != std::string::npos) // ila 3tani ip + port
+        if (token[i] == ':')
+            throw std::runtime_error("Error: missing IP address before ':'");
+        std::stringstream ss;
+        int count = 0;
+        int dot_count = 0;
+        while (i < token.size() && token[i] != ':')
         {
-            if (token[i] == ':')
-                throw std::runtime_error("Error: missing IP address before ':'");
-            std::stringstream ss;
-            int count = 0;
-            int dot_count = 0;
-            while (i < token.size() && token[i] != ':')
-            {
-                if (i > 0 && token[i] == '.')
-                {
-                    if (count > 3)
-                        throw std::runtime_error("Error: invalid IP address format");
-                    else if (count > 0)
-                    {
-                        int octet;
-                        ss >> octet;
-                        if (octet < 0 || octet > 255)
-                            throw std::runtime_error("Error: invalid IP address octet");
-                        ip += ss.str();
-                        ip += '.';
-                        ss.str(""); // .str("") katbdel contenu dyal ss b string khawi
-                        ss.clear(); // katheyd error flags bhal eof ola fail, bach imkenlik tsta3mlha mra khra
-                        count = 0;
-                    }
-                    else // ila t3taw n9ati mzadyin "127..0.0.1"
-                        throw std::runtime_error("Error: invalid IP address format");
-                    dot_count++;
-                    if (dot_count > 3)
-                        throw std::runtime_error("Error: invalid IP address format");
-                }
-                else if (std::isdigit(token[i]))
-                {
-                    ss << token[i];
-                    count++;
-                }
-                else
-                    throw std::runtime_error("Error: invalid character in Host IP address");
-                ++i;
-            }
-            if (dot_count != 3 || token[i - 1] == '.')
+            if ((i == 0 && token[i] == '.') || (i > 0 && token[i] == '.' && token[i - 1] == '.')) // check double dots and dot at start
                 throw std::runtime_error("Error: invalid IP address format");
-            return ip.substr(0, ip.size() - 1); // katheyd akher '.' li tzadt
+
+            if (std::isdigit(token[i]))
+            {
+                ss << token[i];
+                count++;
+                if (count > 3)
+                    throw std::runtime_error("Error: invalid IP address format");
+                if (i + 1 < token.size() && (token[i + 1] == '.' || token[i + 1] == ':'))
+                {
+                    if (token[i + 1] == '.')
+                        dot_count++;
+                    if (dot_count > 3)
+                        throw std::runtime_error("Error: invalid IP address format  here");
+                    int octet;
+                    if (!(ss >> octet) || (octet < 0 || octet > 255))
+                        throw std::runtime_error("Error: invalid IP address octet");
+                    ip += ss.str();
+                    ip += '.';
+                    ss.str(""); // .str("") katbdel contenu dyal ss b string khawi
+                    ss.clear(); // katheyd error flags bhal eof ola fail, bach imkenlik tsta3mlha mra khra
+                    count = 0;
+                    if (token[i + 1] != ':')
+                        i++;
+                }
+            }
+            else
+                throw std::runtime_error("Error: invalid character in Host IP address");
+            ++i;
         }
-        else // ila 3tani gha port
-            break;
+        if (dot_count != 3 || token[i - 1] == '.')
+            throw std::runtime_error("Error: invalid IP address format");
+        return ip.substr(0, ip.size() - 1); // katheyd akher '.' li tzadt
     }
+// ila 3tani gha port
     return "0.0.0.0"; // default ip
 }
 
@@ -146,7 +144,7 @@ static void parseLocationBlock(const std::vector<std::string>& tokens, size_t& i
         {
             if (i + 1 >= tokens.size())
                 throw std::runtime_error("Error: expected root string in location");
-            location.setRoot(tokens[i + 1]);
+            location.setRoot(tokens[i + 1].substr(0, tokens[i + 1].size() - 1)); // heyd ';'
             i += 2;
         }
         else if (tokens[i] == "index")
@@ -187,12 +185,15 @@ static void parseLocationBlock(const std::vector<std::string>& tokens, size_t& i
     }
 }
 
-static void addDefaultLocationIfMissing(LocationConfig& location, const ServerConfig& server)
+void ServerConfig::setDefaultRootAndIndexForLocations()
 {
-    if (location.getIndex().empty())
-        location.setIndex(server.getIndex());
-    if (location.getRoot().empty())
-        location.setRoot(server.getRoot());
+    for (size_t i = 0; i < locations.size(); ++i)
+    {
+        if (locations[i].getRoot().empty())
+            locations[i].setRoot(this->root);
+        if (locations[i].getIndex().empty())
+            locations[i].setIndex(this->index);
+    }
 }
 
 static void parseServerBlock(const std::vector<std::string>& tokens, size_t& i, ServerConfig& server)
@@ -212,7 +213,7 @@ static void parseServerBlock(const std::vector<std::string>& tokens, size_t& i, 
         {
             if (i + 1 >= tokens.size())
                 throw std::runtime_error("Error: expected server_name string");
-            server.setServerName(tokens[i + 1]);
+            server.setServerName(tokens[i + 1].substr(0, tokens[i + 1].size() - 1)); // heyd ';'
             i += 2;
         }
         else if (tokens[i] == "root")
@@ -247,7 +248,7 @@ static void parseServerBlock(const std::vector<std::string>& tokens, size_t& i, 
             int code;
             if (!(ss >> code) || code < 400 || code > 599)
                 throw std::runtime_error("Error: invalid error_page code");
-            std::string path = tokens[i + 2];
+            std::string path = tokens[i + 2].substr(0, tokens[i + 2].size() - 1); // heyd ';'
             server.addErrorPage(code, path);
             i += 3;
         }
@@ -269,10 +270,13 @@ static void parseServerBlock(const std::vector<std::string>& tokens, size_t& i, 
         else
             throw std::runtime_error("Error: unknown directive in server block: " + tokens[i]);
     }
-    if (i < tokens.size() && tokens[i] == "}")
-        ++i; // nfot "}"
-    else
+    if (i < tokens.size() && tokens[i] != "}")
         throw std::runtime_error("Error: expected '}' at the end of server block");
+
+    for (size_t j = 0; j < server.getLocations().size(); ++j) // hna kan3iyt l function likat3ti default root w index l locations ila mat3tawch f config file
+    {
+        server.setDefaultRootAndIndexForLocations();
+    }
 }
 
 void Config::parse (const std::string& filepath)
@@ -293,6 +297,8 @@ void Config::parse (const std::string& filepath)
             {
                 ServerConfig server;
                 parseServerBlock(tokens, i, server);
+                if (server.getPort() == -1 || server.getRoot().empty())
+                    throw std::runtime_error("Error: missing required server directives (listen, root)");
                 addServer(server);
             }
             else
@@ -300,21 +306,21 @@ void Config::parse (const std::string& filepath)
                 throw std::runtime_error("Error: expected '{' after server");
             }
         }
-    }
-    for (size_t j = 0; j < servers.size(); ++j)
-    {
-        const std::vector<LocationConfig>& locations = servers[j].getLocations();
-        for (size_t l = 0; l < locations.size(); ++l)
+        else
         {
-            LocationConfig location = locations[l];
-            addDefaultLocationIfMissing(location, servers[j]);
+            throw std::runtime_error("Error: unknown directive outside server block: " + tokens[i]);
         }
     }
+    if (tokens.size() == 0)
+        throw std::runtime_error("Error: empty config file");
+    if (servers.size() == 0)
+        throw std::runtime_error("Error: no server blocks found in config file");
     file.close();
 }
 
 void Config::printConfig() const
 {
+    std::cout << servers.size() << " server(s) configured.\n\n";
     for (size_t i = 0; i < servers.size(); i++)
     {
         const ServerConfig& server = servers[i];
