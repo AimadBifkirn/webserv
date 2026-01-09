@@ -2,33 +2,91 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <fstream>
 #include <sstream>
+#include <iostream>
+#include <algorithm>
 
-class config
-{
-    private:
-        int port;
-        std::string root;
-        std::vector<std::string> index;
-    public:
-        config(std::string path = "./config/default.config") : port(3000), root("./app/")
-        {
-            index.push_back("index.html");
-        };
 
-        void create (std::string path) 
-        {
-            std::fstream    file(path);
-            if (!file.is_open())
-                return;
-            std::stringstream   ss;
-            ss << file.rdbuf();
-            ss.str();
-        }
+class LocationConfig {
+	private:
+		std::string					path; // URL path for this location, example: "/images"
+		std::vector<std::string>	allowed_methods; // (allowed methods) list of allowed HTTP methods for this location
+		std::string					root; // overrides server root for this location, if path == "/images", and root == "/var/www/images", and the request is for "/images/pic.jpg", the server will look for the file at "/var/www/images/pic.jpg"
+		std::string					index; // (default index file) meaning file to serve when a directory is requested, default is "index.html"
+		bool						autoindex; // (autoindex) whether to enable directory listing, default is false
+		std::string					cgi_path; // (cgi path) path to the CGI script
+		std::string					redirect; // (redirect) URL to redirect to
+	public:
 
-        int getPort () {return this->port;};
-        std::string getRoot () { return this->root;};
+		LocationConfig() : root(""), index(""), autoindex(false), cgi_path(""), redirect("") {};
+
+		// setters
+		void	setPath (const std::string& path) { this->path = path; };
+		void	setAllowedMethods (const std::vector<std::string>& methods) { this->allowed_methods = methods; };
+		void	setRoot (const std::string& root) { this->root = root; };
+		void	setIndex (const std::string& index) { this->index = index; };
+		void	setAutoindex (bool autoindex) { this->autoindex = autoindex; };
+		void	setCgiPath (const std::string& cgi_path) { this->cgi_path = cgi_path; };
+		void	setRedirect (const std::string& redirect) { this->redirect = redirect; };
+
+		// getters
+		const std::string&			getPath () const { return this->path; };
+		const std::vector<std::string>&	getAllowedMethods () const { return this->allowed_methods; };
+		const std::string&			getRoot () const { return this->root; };
+		const std::string&			getIndex () const { return this->index; };
+		bool						isAutoindex () const { return this->autoindex; };
+		const std::string&			getCgiPath () const { return this->cgi_path; };
+		const std::string&			getRedirect () const { return this->redirect; };
 };
 
-extern config server;
+
+class ServerConfig {
+	private:
+		int							port; // default port is 80 in http
+		std::string					host; // default host is 0.0.0.0
+		std::string					server_name; // (domain name) if not set in config, default is "", meaning catch all
+		std::string					root; // (default root) where the server will look for files, default is "../app"
+		std::string					index; // (default index file) meaning file to serve when a directory is requested, default is "../app/index.html"
+		size_t						client_max_body_size; // (default max body size) meaning maximum allowed size for client request body, default is 1MB
+		std::map<int, std::string>	error_pages; // (custom error pages)
+		std::vector<LocationConfig>	locations; // (location blocks) A location overrides server behavior for a specific URL path.
+	public:
+
+		ServerConfig() : port(80), host("0.0.0.0"), root("../app"), index("index.html"), client_max_body_size(1 * 1024 * 1024) {};
+
+		// setters
+		void	setPort (int port) { this->port = port; };
+		void	setHost (const std::string& host) { this->host = host; };
+		void	setServerName (const std::string& server_name) { this->server_name = server_name; };
+		void	setRoot (const std::string& root) { this->root = root; };
+		void	setIndex (const std::string& index) { this->index = index; };
+		void	setClientMaxBodySize (size_t size) { this->client_max_body_size = size; };
+		void	addErrorPage (int code, const std::string& path) { this->error_pages[code] = path; };
+		void	addLocation (const LocationConfig& location) { this->locations.push_back(location);};
+
+		// getters
+		int					getPort () const { return this->port; };
+		const std::string&	getHost () const { return this->host; };
+		const std::string&	getServerName () const { return this->server_name; };
+		const std::string&	getRoot () const { return this->root; };
+		const std::string&	getIndex () const { return this->index; };
+		size_t				getClientMaxBodySize () const { return this->client_max_body_size; };
+		const std::map<int, std::string>&	getErrorPages () const { return this->error_pages; };
+		const std::vector<LocationConfig>&	getLocations () const { return this->locations; };
+};
+
+
+class Config
+{
+    private:
+        std::vector<ServerConfig> servers; // the servers
+    public:
+        void addServer(const ServerConfig& server) { servers.push_back(server); };
+        const std::vector<ServerConfig>& getServers() const { return this->servers; };
+        void parse(const std::string& filepath);
+        void printConfig() const; // For debugging
+};
+
+extern Config globalConfig;
