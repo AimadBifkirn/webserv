@@ -21,3 +21,4 @@ int main(int argc, char* argv[])
     globalConfig.printConfig(); // For debugging
     return 0;
 }
+    
